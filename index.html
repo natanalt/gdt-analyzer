@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <title>GDT Descriptor Analysis Tool</title>
+        
+        <link rel="stylesheet" href="style.css">
+
+        <script src="utils.js" defer></script>
+        <script src="tabs.js" defer></script>
+        <script src="descriptor.js" defer></script>
+        <script src="editor.js" defer></script>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1>x86 tools - GDT descriptor analyzer and editor</h1>
+            </header>
+
+            <p>
+                This online tool, handy for a few people, lets you analyze how <a href="https://wiki.osdev.org/GDT" title="OSDev Wiki - GDT">GDT</a>
+                segment descriptors are processed by the CPU. May be useful if you're stuck debugging this stuff.
+            </p>
+
+            <p>
+                It seems to work well enough, there may be bugs here, but you never know lmao segmentation is a prison
+            </p>
+
+            <p>
+                I would double-check anything this site says about expand-down segments
+            </p>
+
+            <div id="inputs">
+                <div id="tabs">
+                    <button id="tab-button-bytes" class="active">Raw bytes</button>
+                    <button id="tab-button-bits">Raw bit view</button>
+                    <button id="tab-button-presets">Presets</button>
+                </div>
+
+                <div class="tab-view tab-active" id="tab-bytes">
+                    Here you can input the descriptor data as a sequence of 8 bytes, in hexadecimal:
+                    <input type="text" id="desc-input-bytes" value="ff ff 00 00 00 9a cf 00" maxlength="23">
+
+                    <div id="malformed-bytes-input-error" class="malformed-input-error hidden">
+                        ⚠️ Malformed input! Allowed format: 8 hex numbers (0-9 | a-f | A-F), separated by spaces.
+                    </div>
+                </div>
+
+                <div class="tab-view tab-inactive" id="tab-bits">
+                    Bits
+                </div>
+
+                <div class="tab-view tab-inactive" id="tab-presets">
+                    <b>Descriptor presets (TODO):</b>
+                    <ul>
+                        <li><a href="#">Ring 0 flat code segment</a></li>
+                        <li><a href="#">Ring 0 flat data segment</a></li>
+                        <li><a href="#">Ring 3 flat code segment</a></li>
+                        <li><a href="#">Ring 3 flat data segment</a></li>
+                        <li><a href="#">16-bit TSS at 0x12345678</a></li>
+                        <li><a href="#">32-bit TSS at 0x12345678</a></li>
+                        <li><a href="#">LDT at 0x12345678</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <table id="desc-table">
+                <thead>
+                    <th colspan="2">Descriptor information</th>
+                </thead>
+                <tbody id="desc-info">
+                    <tr>
+                        <th>Segment present</th>
+                        <td>
+                            <input type="checkbox" id="segment-present" checked>
+                            <label for="segment-present">Present</label>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present">
+                        <th>AVL bit 52</th>
+                        <td>
+                            <input type="checkbox" id="segment-avl-bit">
+                            <label for="segment-avl-bit">Bit set</label>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present hide-if-no-notes hidden">
+                        <th>Notes</th>
+                        <td>
+                            <ul>
+                                <li id="note-286-compat" class="hidden">
+                                    🗨️ This descriptor is 80286+ compatible
+                                </li>
+                                <li id="note-386-compat" class="hidden">
+                                    🗨️ This descriptor is 80386+ compatible
+                                </li>
+                                <li id="note-x86-64-compat" class="hidden">
+                                    🗨️ This descriptor is x86_64+ compatible
+                                </li>
+                                <li id="note-reserved" class="hidden">
+                                    ⚠️ Some of the reserved bits aren't set to zero. This may cause undefined behavior, or CPU exceptions.
+                                    <button id="clear-reserved">Set all reserved bits to zero</button>
+                                </li>
+                                <li id="note-invalid" class="hidden">
+                                    ⚠️ Some of the fields are set to invalid values. This may cause undefined behavior or CPU exceptions.
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present hide-if-use64">
+                        <th>Raw base</th>
+                        <td>
+                            <input type="text" id="segment-raw-base" value="0x0000_0000" class="monospace">
+                            <span id="segment-raw-base-error" class="malformed-input-error hidden">⚠️ Malformed input</span>
+                            <span id="segment-raw-base-too-large-error" class="malformed-input-error hidden">⚠️ Max value: 0xffff_ffff</span>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present hide-if-use64">
+                        <th>Raw limit</th>
+                        <td>
+                            <input type="text" id="segment-raw-limit" value="0x00000" class="monospace">
+                            <span id="segment-raw-limit-error" class="malformed-input-error hidden">⚠️ Malformed input</span>
+                            <span id="segment-raw-limit-too-large-error" class="malformed-input-error hidden">⚠️ Max value: 0xfffff</span>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present hide-if-use64">
+                        <th>Address span</th>
+                        <td id="segment-span" class="monospace">
+                            0x0000_0000 - 0xffff_ffff
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present hide-if-use64">
+                        <th>Linear address span (386+)</th>
+                        <td id="segment-linear-span" class="monospace">
+                            0x0000_0000 - 0xffff_ffff
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present">
+                        <th>Size info</th>
+                        <td>
+                            <label for="segment-granularity">Limit granularity:</label>
+                            <select id="segment-granularity">
+                                <option value="byte">Byte granularity</option>
+                                <option value="page">Page granularity</option>
+                            </select>
+                            <ul class="small-margin">
+                                <li id="segment-byte-size">123,456,789</li>
+                                <li id="segment-page-size">123,456,789</li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <tr class="hide-if-not-present">
+                        <th>Segment attributes</th>
+                        <td>
+                            <label for="segment-type">Segment type:</label>
+                            <select id="segment-type">
+                                <option value="code">Code segment</option>
+                                <option value="data">Data segment</option>
+                                <option value="system">System segment (TSS, LDT)</option>
+                            </select>
+
+                            <div id="segment-type-editor-code" class="segment-type-editor">
+                                <input type="checkbox" id="segment-code-accessed">
+                                <label for="segment-code-accessed">Accessed</label>
+                                <br>
+                                <input type="checkbox" id="segment-code-readable">
+                                <label for="segment-code-readable">Readable</label>
+                                <br>
+                                <input type="checkbox" id="segment-code-conforming">
+                                <label for="segment-code-conforming">Conforming</label>
+                                <br>
+                                <label for="segment-code-size">Code size:</label>
+                                <select id="segment-code-size">
+                                    <option value="16">16-bit</option>
+                                    <option value="32">32-bit</option>
+                                    <option value="64">64-bit</option>
+                                    <option value="invalid">Invalid 0b11</option>
+                                </select>
+                            </div>
+
+                            <div id="segment-type-editor-data" class="segment-type-editor hidden">
+                                <input type="checkbox" id="segment-data-accessed">
+                                <label for="segment-data-accessed">Accessed</label>
+                                <br>
+                                <input type="checkbox" id="segment-data-writable">
+                                <label for="segment-data-writable">Writable</label>
+                                <br>
+                                <input type="checkbox" id="segment-data-expand-down">
+                                <label for="segment-data-expand-down">Expand-down</label>
+                                <br>
+                                <input type="checkbox" id="segment-data-bits32">
+                                <label for="segment-data-bits32">32-bit</label>
+                            </div>
+
+                            <div id="segment-type-editor-system" class="segment-type-editor hidden">
+                                <select id="segment-system-type">
+                                    <option value="1">0x1 - Available 16-bit TSS</option>
+                                    <option value="3">0x3 - Busy 16-bit TSS</option>
+                                    <option value="2">0x2 - LDT</option>
+                                    <option value="5">0x5 - Task gate</option>
+                                    <option value="9">0x9 - Available 32-bit TSS</option>
+                                    <option value="b">0xb - Busy 32-bit TSS</option>
+                                    <optgroup label="IDT-only values">
+                                        <option value="4">0x4 - (IDT type) 16-bit call gate</option>
+                                        <option value="6">0x6 - (IDT type) 16-bit interrupt gate</option>
+                                        <option value="7">0x7 - (IDT type) 16-bit trap gate</option>
+                                        <option value="c">0xc - (IDT type) 32-bit call gate</option>
+                                        <option value="e">0xe - (IDT type) 32-bit interrupt gate</option>
+                                        <option value="f">0xf - (IDT type) 32-bit trap gate</option>
+                                    </optgroup>
+                                    <optgroup label="Invalid values">
+                                        <option value="0">0x0 - (Invalid)</option>
+                                        <option value="8">0x8 - (Invalid)</option>
+                                        <option value="a">0xa - (Invalid)</option>
+                                        <option value="d">0xd - (Invalid)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <label for="segment-ring">Ring level:</label>
+                            <select id="segment-ring">
+                                <option value="0">Ring 0</option>
+                                <option value="1">Ring 1</option>
+                                <option value="2">Ring 2</option>
+                                <option value="3">Ring 3</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <footer>
+                Made by <a href="https://github.com/natanalt" title="My GitHub profile">Natalia Cholewa</a> ❤️
+            </footer>
+        </main>
+    </body>
+</html>

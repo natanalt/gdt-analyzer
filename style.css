@@ -1,0 +1,146 @@
+html, body {
+    margin: 0;
+    background: #ededed;
+    font-family: sans-serif;
+}
+
+label {
+    user-select: none;
+}
+
+main {
+    width: 100%;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+    padding: 10px;
+}
+
+h1 {
+    padding-bottom: 5px;
+    border-bottom: 1px solid #cccccc;
+}
+
+#inputs {
+    background: #fafafa;
+    border: 1px solid #555555;
+}
+
+#tabs {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1px solid #555555;
+}
+
+#tabs button {
+    background: #f0f0f0;
+    margin: 0;
+    padding: 12px;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid #555555;
+}
+
+#tabs button:hover {
+    background: #e0e0e0;
+}
+
+#tabs button.active {
+    background: #d0d0d0;
+}
+
+.tab-view {
+    padding: 15px;
+}
+
+.tab-active {
+    display: block;
+}
+
+.tab-inactive {
+    display: none;
+}
+
+#desc-input-bytes {
+    width: 100%;
+    display: block;
+    box-sizing: border-box;
+    font-family: monospace;
+    padding: 8px;
+    margin-top: 15px;
+}
+
+#malformed-bytes-input-error {
+    padding: 10px;
+}
+
+.malformed-input-error {
+    padding: 5px;
+    background: #f75281;
+    border: 1px solid #c4355e;
+    color: #eeeeee;
+    margin-top: 15px;
+}
+
+#desc-table {
+    width: 100%;
+    margin-top: 20px;
+    background: #fafafa;
+    border: 1px solid #555555;
+    border-collapse: collapse;
+}
+
+#desc-table tr {
+    border: 1px solid #555555;
+}
+
+#desc-info th {
+    text-align: right;
+}
+
+#desc-table thead th {
+    padding: 12px;
+    background: #d0d0d0;
+}
+
+#desc-info th, #desc-table td {
+    border: 1px solid #555555;
+    padding: 6px;
+}
+
+#desc-info th {
+    background: #e0e0e0;
+    width: 30%;
+}
+
+.segment-type-editor {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    border-left: 1px solid #555555;
+}
+
+ul.small-margin {
+    margin: 2px;
+}
+
+footer {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-style: italic;
+    text-align: center;
+    font-size: 0.6em;
+}      
+
+.monospace {
+    font-family: monospace;
+}
+
+.hidden {
+    display: none;
+}
